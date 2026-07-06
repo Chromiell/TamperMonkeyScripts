@@ -43,8 +43,6 @@ _(Note: Replace the link above in your README with your actual repository URL)._
 2. **Double-click** inside any input box (e.g., the First Name, Email, or Fiscal Code field).
 3. Watch the script magically fill out the coordinated test identity instantly!
 
-> 💡 **Tip:** If you want to keep your browser UI perfectly clean, you can disable the red badge counter in the extension settings: **Tampermonkey Dashboard -> Settings -> Config Mode: Advanced -> Show script count -> Set to None**.
-
 ## 🔄 Automatic Updates
 
 Because this script uses `@updateURL` pointing directly to this repository, your browser will automatically fetch the latest updates whenever a new version is pushed to the `main` branch.
