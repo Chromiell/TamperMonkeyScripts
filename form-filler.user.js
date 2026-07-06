@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         Super Form Filler Multi-Form (Anti-Duplicati)
+// @name         Super Form Filler Multi-Form (Data-Row Patch)
 // @namespace    http://tampermonkey.net/
-// @version      1.3
-// @description  Compila moduli multipli e ripetuti a schermo generando identità uniche e coordinate per ciascun blocco.
+// @version      1.4
+// @description  Risolve il disallineamento sui form che usano sia attributi data-row sia ID numerici.
 // @author       Dev Peer
 // @match        *://*/*
 // @grant        none
@@ -11,7 +11,6 @@
 (function () {
     "use strict";
 
-    // Set esteso di nomi e cognomi per ridurre a zero le collisioni nei form massivi
     const nomiM = [
         "Mario",
         "Luigi",
@@ -73,7 +72,7 @@
         { nome: "Napoli", codice: "F839" },
         { nome: "Firenze", codice: "D612" },
         { nome: "Bologna", codice: "A944" },
-        { nome: "Genova", codice: "D969" },
+        { geno: "Genova", codice: "D969" },
         { nome: "Venezia", codice: "L736" },
         { nome: "Bari", codice: "A662" },
     ];
@@ -197,7 +196,6 @@
         return cinMap[somma % 26];
     }
 
-    // Generatore 100% dinamico di profili anagrafici coordinati
     function generaProfiloCasuale() {
         const sesso = Math.random() > 0.5 ? "M" : "F";
         const nome =
@@ -209,7 +207,7 @@
         const meseObj = mesiInfo[Math.floor(Math.random() * mesiInfo.length)];
 
         const giornoVal = Math.floor(Math.random() * 28 + 1);
-        const annoNum = Math.floor(Math.random() * 30 + 70); // Anni tra il 1970 e il 2000
+        const annoNum = Math.floor(Math.random() * 30 + 70);
 
         let cfBase = "";
         cfBase += calcolaCodiceCognome(cognome);
@@ -269,7 +267,6 @@
         el.dispatchEvent(new Event("change", { bubbles: true }));
     }
 
-    // Gestore dell'evento di doppio clic
     document.addEventListener("dblclick", function (e) {
         const target = e.target;
 
@@ -279,8 +276,6 @@
         ) {
             const ambito = target.closest("form") || document;
             const elementi = ambito.querySelectorAll("input, select");
-
-            // Cache locale temporanea per mappare ogni gruppo alla sua identità unica durante questa esecuzione
             const profiliAssegnati = {};
 
             elementi.forEach((el) => {
@@ -292,20 +287,32 @@
                     `${nameStr} ${idStr} ${el.placeholder || ""}`.toLowerCase();
                 const type = (el.type || "").toLowerCase();
 
-                // --- LOGICA DI RAGGRUPPAMENTO INTELLIGENTE ---
-                // Cerca indici numerici negli attributi (es: passeggero[0], nome_1, cf-2)
-                const matchIndice =
-                    `${nameStr} ${idStr}`.match(/\[(\d+)\]/) ||
-                    `${nameStr} ${idStr}`.match(/_(\d+)/) ||
-                    `${nameStr} ${idStr}`.match(/-(\d+)/);
+                let groupKey = null;
 
-                let groupKey = "default";
-                if (matchIndice) {
-                    groupKey = "idx_" + matchIndice[1];
-                } else {
-                    // Se non ci sono indici nel nome, raggruppa in base al contenitore strutturale HTML (es: la riga di una tabella o un fieldset)
+                // 1. Controlla prima di tutto attributi espliciti di riga (es. data-row="1")
+                const dataRow =
+                    el.getAttribute("data-row") ||
+                    el.getAttribute("data-index") ||
+                    el.getAttribute("data-id");
+                if (dataRow) {
+                    groupKey = "idx_" + dataRow;
+                }
+
+                // 2. Se manca, estrai il numero da ID o Name (es. nome_1 -> 1)
+                if (!groupKey) {
+                    const matchIndice =
+                        `${nameStr} ${idStr}`.match(/\[(\d+)\]/) ||
+                        `${nameStr} ${idStr}`.match(/_(\d+)/) ||
+                        `${nameStr} ${idStr}`.match(/-(\d+)/);
+                    if (matchIndice) {
+                        groupKey = "idx_" + matchIndice[1];
+                    }
+                }
+
+                // 3. Fallback sul contenitore strutturale (incluso .formpart del tuo HTML)
+                if (!groupKey) {
                     const parentContainer = el.closest(
-                        'tr, fieldset, .row, .form-row, [class*="block"], [class*="section"]',
+                        'tr, fieldset, .row, .form-row, .formpart, [class*="block"], [class*="section"]',
                     );
                     if (parentContainer) {
                         if (!parentContainer.dataset.fillerGroupId) {
@@ -316,15 +323,16 @@
                     }
                 }
 
-                // Se questo gruppo non ha ancora un'identità associata, la creiamo adesso al volo
+                if (!groupKey) groupKey = "default";
+
+                // Assegna o recupera il profilo per questo blocco
                 if (!profiliAssegnati[groupKey]) {
                     profiliAssegnati[groupKey] = generaProfiloCasuale();
                 }
 
                 const p = profiliAssegnati[groupKey];
 
-                // --- ASSEGNAZIONE DEI DATI AL CAMPO CORRENTE ---
-                // 1. Codice Fiscale
+                // --- COMPILAZIONE CAMPI ---
                 if (
                     desc.includes("cf") ||
                     desc.includes("fiscale") ||
@@ -332,9 +340,7 @@
                     el.maxLength === 16
                 ) {
                     impostaValore(el, p.cf);
-                }
-                // 2. Nome
-                else if (
+                } else if (
                     (desc.includes("nome") ||
                         desc.includes("name") ||
                         desc.includes("first")) &&
@@ -345,25 +351,21 @@
                     !desc.includes("full")
                 ) {
                     impostaValore(el, p.nome);
-                }
-                // 3. Cognome
-                else if (
+                } else if (
                     desc.includes("cognome") ||
                     desc.includes("surname") ||
                     desc.includes("last")
                 ) {
                     impostaValore(el, p.cognome);
                 }
-                // 4. Email
+                // Riconosce la mail anche se scritta come E-Mail nel form
                 else if (
                     type === "email" ||
                     desc.includes("email") ||
                     desc.includes("mail")
                 ) {
                     impostaValore(el, p.email);
-                }
-                // 5. Data di Nascita
-                else if (
+                } else if (
                     desc.includes("nascita") ||
                     desc.includes("birth") ||
                     type === "date"
@@ -372,17 +374,13 @@
                         el,
                         type === "date" ? p.dataInputDate : p.dataStandard,
                     );
-                }
-                // 6. Sesso / Genere
-                else if (
+                } else if (
                     desc.includes("sesso") ||
                     desc.includes("genere") ||
                     desc.includes("gender")
                 ) {
                     impostaValore(el, p.sesso);
-                }
-                // 7. Comune di Nascita
-                else if (
+                } else if (
                     desc.includes("comune") ||
                     desc.includes("citta") ||
                     desc.includes("city") ||
