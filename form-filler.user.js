@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         Super Form Filler Multi-Form (Data-Row Patch)
+// @name         Super Form Filler Multi-Form (Email Patch)
 // @namespace    http://tampermonkey.net/
-// @version      1.4
-// @description  Risolve il disallineamento sui form che usano sia attributi data-row sia ID numerici.
+// @version      1.8
+// @description  Risolve il falso positivo del campo email scambiato per indirizzo postale a causa del testo di nota.
 // @author       Dev Peer
 // @match        *://*/*
 // @grant        none
@@ -64,17 +64,32 @@
         "Barbieri",
     ];
 
+    const vie = [
+        "Via Roma",
+        "Via Milano",
+        "Via Garibaldi",
+        "Via Dante",
+        "Corso Vittorio Emanuele",
+        "Via Mazzini",
+        "Via Cavour",
+        "Via Verdi",
+        "Via Kennedy",
+        "Piazza Italia",
+        "Via Aldo Moro",
+        "Via Torino",
+    ];
+
     const comuni = [
-        { nome: "Roma", codice: "H501" },
-        { nome: "Milano", codice: "F205" },
-        { nome: "Torino", codice: "L219" },
-        { nome: "Palermo", codice: "G273" },
-        { nome: "Napoli", codice: "F839" },
-        { nome: "Firenze", codice: "D612" },
-        { nome: "Bologna", codice: "A944" },
-        { geno: "Genova", codice: "D969" },
-        { nome: "Venezia", codice: "L736" },
-        { nome: "Bari", codice: "A662" },
+        { nome: "Roma", codice: "H501", prov: "RM", cap: "00100" },
+        { nome: "Milano", codice: "F205", prov: "MI", cap: "20100" },
+        { nome: "Torino", codice: "L219", prov: "TO", cap: "10100" },
+        { nome: "Palermo", codice: "G273", prov: "PA", cap: "90100" },
+        { nome: "Napoli", codice: "F839", prov: "NA", cap: "80100" },
+        { nome: "Firenze", codice: "D612", prov: "FI", cap: "50100" },
+        { nome: "Bologna", codice: "A944", prov: "BO", cap: "40100" },
+        { nome: "Genova", codice: "D969", prov: "GE", cap: "16100" },
+        { nome: "Venezia", codice: "L736", prov: "VE", cap: "30100" },
+        { nome: "Bari", codice: "A662", prov: "BA", cap: "70100" },
     ];
 
     const mesiInfo = [
@@ -196,6 +211,67 @@
         return cinMap[somma % 26];
     }
 
+    function calcolaLastDigitPIVA(piva10) {
+        let x = 0;
+        let y = 0;
+        for (let i = 0; i < 10; i++) {
+            let digit = parseInt(piva10[i], 10);
+            if ((i + 1) % 2 !== 0) {
+                x += digit;
+            } else {
+                let temp = digit * 2;
+                if (temp > 9) temp -= 9;
+                y += temp;
+            }
+        }
+        let t = (x + y) % 10;
+        return ((10 - t) % 10).toString();
+    }
+
+    function generaPIVAValida() {
+        let piva = "";
+        for (let i = 0; i < 7; i++)
+            piva += Math.floor(Math.random() * 10).toString();
+        let prov = Math.floor(Math.random() * 100 + 1)
+            .toString()
+            .padStart(3, "0");
+        piva += prov;
+        piva += calcolaLastDigitPIVA(piva);
+        return piva;
+    }
+
+    function generaCellulareItaliano() {
+        const prefissi = [
+            "331",
+            "333",
+            "334",
+            "335",
+            "338",
+            "339",
+            "340",
+            "342",
+            "345",
+            "346",
+            "347",
+            "348",
+            "349",
+            "320",
+            "324",
+            "327",
+            "328",
+            "329",
+            "366",
+            "380",
+            "388",
+            "389",
+        ];
+        let prefisso = prefissi[Math.floor(Math.random() * prefissi.length)];
+        let corpo = "";
+        for (let i = 0; i < 7; i++)
+            corpo += Math.floor(Math.random() * 10).toString();
+        return prefisso + corpo;
+    }
+
     function generaProfiloCasuale() {
         const sesso = Math.random() > 0.5 ? "M" : "F";
         const nome =
@@ -222,16 +298,23 @@
         cfBase += calcolaCIN(cfBase);
 
         const randId = Math.floor(Math.random() * 900 + 100);
+        const viaScelta = vie[Math.floor(Math.random() * vie.length)];
+        const civico = Math.floor(Math.random() * 120 + 1);
 
         return {
             nome,
             cognome,
             sesso,
             cf: cfBase,
+            piva: generaPIVAValida(),
+            cellulare: generaCellulareItaliano(),
             email: `${nome.toLowerCase()}.${cognome.toLowerCase()}${randId}@example.com`,
             dataStandard: `${giornoVal.toString().padStart(2, "0")}/${meseObj.num}/19${annoNum}`,
             dataInputDate: `19${annoNum}-${meseObj.num}-${giornoVal.toString().padStart(2, "0")}`,
             comuneNome: comune.nome,
+            provincia: comune.prov,
+            cap: comune.cap,
+            indirizzo: `${viaScelta} ${civico}`,
         };
     }
 
@@ -257,7 +340,8 @@
             const targetOpt = options.find(
                 (opt) =>
                     opt.value.toLowerCase() === valore.toLowerCase() ||
-                    opt.text.toLowerCase().includes(valore.toLowerCase()),
+                    opt.text.toLowerCase().includes(valore.toLowerCase()) ||
+                    opt.text.toLowerCase() === valore.toLowerCase(),
             );
             if (targetOpt) el.value = targetOpt.value;
         } else {
@@ -287,34 +371,35 @@
                     `${nameStr} ${idStr} ${el.placeholder || ""}`.toLowerCase();
                 const type = (el.type || "").toLowerCase();
 
+                const parentText = (
+                    el.closest(".form-group, td, label, div")?.innerText || ""
+                ).toLowerCase();
+
                 let groupKey = null;
 
-                // 1. Controlla prima di tutto attributi espliciti di riga (es. data-row="1")
                 const dataRow =
                     el.getAttribute("data-row") ||
                     el.getAttribute("data-index") ||
                     el.getAttribute("data-id");
-                if (dataRow) {
-                    groupKey = "idx_" + dataRow;
-                }
+                if (dataRow) groupKey = "idx_" + dataRow;
 
-                // 2. Se manca, estrai il numero da ID o Name (es. nome_1 -> 1)
                 if (!groupKey) {
                     const matchIndice =
                         `${nameStr} ${idStr}`.match(/\[(\d+)\]/) ||
                         `${nameStr} ${idStr}`.match(/_(\d+)/) ||
                         `${nameStr} ${idStr}`.match(/-(\d+)/);
-                    if (matchIndice) {
-                        groupKey = "idx_" + matchIndice[1];
-                    }
+                    if (matchIndice) groupKey = "idx_" + matchIndice[1];
                 }
 
-                // 3. Fallback sul contenitore strutturale (incluso .formpart del tuo HTML)
                 if (!groupKey) {
                     const parentContainer = el.closest(
-                        'tr, fieldset, .row, .form-row, .formpart, [class*="block"], [class*="section"]',
+                        'tr, fieldset, .formpart, [class*="block"], [class*="section"]',
                     );
-                    if (parentContainer) {
+                    if (
+                        parentContainer &&
+                        !parentContainer.classList.contains("row") &&
+                        !parentContainer.classList.contains("form-row")
+                    ) {
                         if (!parentContainer.dataset.fillerGroupId) {
                             parentContainer.dataset.fillerGroupId =
                                 "gen_" + Math.floor(Math.random() * 100000);
@@ -325,66 +410,141 @@
 
                 if (!groupKey) groupKey = "default";
 
-                // Assegna o recupera il profilo per questo blocco
                 if (!profiliAssegnati[groupKey]) {
                     profiliAssegnati[groupKey] = generaProfiloCasuale();
                 }
 
                 const p = profiliAssegnati[groupKey];
 
-                // --- COMPILAZIONE CAMPI ---
+                // --- ALBERO DI LOGICHE OTTIMIZZATO ---
+
+                // 1. CAP
                 if (
-                    desc.includes("cf") ||
-                    desc.includes("fiscale") ||
-                    desc.includes("fiscal") ||
+                    desc.includes("cap") ||
+                    desc.includes("zip") ||
+                    parentText.includes("cap")
+                ) {
+                    impostaValore(el, p.cap);
+                }
+                // 2. Provincia
+                else if (
+                    desc.includes("provincia") ||
+                    desc.includes("province") ||
+                    nameStr === "prov" ||
+                    idStr === "prov" ||
+                    parentText.includes("provincia")
+                ) {
+                    impostaValore(el, p.provincia);
+                }
+                // 3. Indirizzo di residenza (CORRETTO: Ignora se il contesto parla esplicitamente di email)
+                else if (
+                    (desc.includes("indirizzo") ||
+                        desc.includes("address") ||
+                        desc.includes("via") ||
+                        parentText.includes("indirizzo")) &&
+                    !desc.includes("email") &&
+                    !desc.includes("mail") &&
+                    !parentText.includes("email") &&
+                    !parentText.includes("e-mail")
+                ) {
+                    impostaValore(el, p.indirizzo);
+                }
+                // 4. Codice Fiscale
+                else if (
+                    parentText.includes("codice fiscale") ||
+                    parentText.includes("codice_fiscale") ||
+                    desc.includes("codicefiscale") ||
+                    desc.includes("codice_fiscale") ||
+                    nameStr === "cf" ||
+                    idStr === "cf" ||
                     el.maxLength === 16
                 ) {
                     impostaValore(el, p.cf);
-                } else if (
-                    (desc.includes("nome") ||
-                        desc.includes("name") ||
-                        desc.includes("first")) &&
-                    !desc.includes("cognome") &&
-                    !desc.includes("surname") &&
-                    !desc.includes("last") &&
-                    !desc.includes("user") &&
-                    !desc.includes("full")
+                }
+                // 5. Partita IVA
+                else if (
+                    desc.includes("piva") ||
+                    desc.includes("partitaiva") ||
+                    desc.includes("partita_iva") ||
+                    desc.includes("p.iva") ||
+                    parentText.includes("partita iva") ||
+                    parentText.includes("p.iva") ||
+                    /\bvat\b/i.test(desc)
                 ) {
-                    impostaValore(el, p.nome);
-                } else if (
+                    impostaValore(el, p.piva);
+                }
+                // 6. Telefono / Cellulare
+                else if (
+                    type === "tel" ||
+                    desc.includes("tel") ||
+                    desc.includes("cell") ||
+                    desc.includes("phone") ||
+                    desc.includes("mob") ||
+                    parentText.includes("tel") ||
+                    parentText.includes("telefono")
+                ) {
+                    impostaValore(el, p.cellulare);
+                }
+                // 7. Cognome
+                else if (
                     desc.includes("cognome") ||
                     desc.includes("surname") ||
-                    desc.includes("last")
+                    desc.includes("last") ||
+                    parentText.includes("cognome")
                 ) {
                     impostaValore(el, p.cognome);
                 }
-                // Riconosce la mail anche se scritta come E-Mail nel form
+                // 8. Nome
+                else if (
+                    (desc.includes("nome") ||
+                        desc.includes("name") ||
+                        desc.includes("first") ||
+                        parentText.includes("nome")) &&
+                    !desc.includes("cognome") &&
+                    !parentText.includes("cognome") &&
+                    !desc.includes("user")
+                ) {
+                    impostaValore(el, p.nome);
+                }
+                // 9. Email (Ora intercetta correttamente l'input saltato dal filtro indirizzo)
                 else if (
                     type === "email" ||
                     desc.includes("email") ||
-                    desc.includes("mail")
+                    desc.includes("mail") ||
+                    parentText.includes("email") ||
+                    parentText.includes("e-mail")
                 ) {
                     impostaValore(el, p.email);
-                } else if (
+                }
+                // 10. Data di Nascita
+                else if (
                     desc.includes("nascita") ||
                     desc.includes("birth") ||
-                    type === "date"
+                    type === "date" ||
+                    parentText.includes("data")
                 ) {
                     impostaValore(
                         el,
                         type === "date" ? p.dataInputDate : p.dataStandard,
                     );
-                } else if (
+                }
+                // 11. Sesso / Genere
+                else if (
                     desc.includes("sesso") ||
                     desc.includes("genere") ||
-                    desc.includes("gender")
+                    desc.includes("gender") ||
+                    parentText.includes("genere")
                 ) {
                     impostaValore(el, p.sesso);
-                } else if (
+                }
+                // 12. Città / Comune
+                else if (
                     desc.includes("comune") ||
                     desc.includes("citta") ||
                     desc.includes("city") ||
-                    desc.includes("birthplace")
+                    desc.includes("birthplace") ||
+                    parentText.includes("comune") ||
+                    parentText.includes("città")
                 ) {
                     impostaValore(el, p.comuneNome);
                 }
