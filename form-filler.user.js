@@ -3,7 +3,7 @@
 // @namespace    http://tampermonkey.net/
 // @version      1.9.1
 // @description  Riconoscimento P.IVA tramite whitelist esplicita di parole chiave (openapivat, companyvat, vatnumber, ecc.) con e senza separatori.
-// @author       Dev Peer
+// @author       Chromiell
 // @match        *://*/*
 // @grant        none
 // ==/UserScript==
