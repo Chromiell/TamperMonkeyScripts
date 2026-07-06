@@ -6,7 +6,7 @@
 // @author       Dev Peer
 // @match        *://*/*
 // @grant        none
-// ==UserScript==
+// ==/UserScript==
 
 (function () {
     "use strict";
