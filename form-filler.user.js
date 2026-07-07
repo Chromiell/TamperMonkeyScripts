@@ -1,7 +1,7 @@
 // ==UserScript==
-// @name         Super Form Filler Multi-Form (Explicit VAT Match)
+// @name         Form Filler Multi-Form
 // @namespace    http://tampermonkey.net/
-// @version      1.9.2
+// @version      1.9.3
 // @description  Riconoscimento P.IVA tramite whitelist esplicita di parole chiave (openapivat, companyvat, vatnumber, ecc.) con e senza separatori.
 // @author       Chromiell
 // @match        *://*/*
@@ -335,6 +335,40 @@
         );
     }
 
+    function attivaBlink(el) {
+        if (!document.getElementById("filler-blink-style")) {
+            const s = document.createElement("style");
+            s.id = "filler-blink-style";
+            s.textContent = `
+                @keyframes fillerBlink {
+                    0%, 100% {
+                        border-color: #a6ff66;
+                        outline: 3px solid #a6ff66;
+                        box-shadow: 0 0 10px #a6ff66;
+                    }
+                    50% {
+                        border-color: transparent;
+                        outline: 3px solid transparent;
+                        box-shadow: 0 0 0px transparent;
+                    }
+                }
+                .filler-blink-effect {
+                    animation: fillerBlink 1s ease-in-out 3 !important;
+                }
+            `;
+            (document.head || document.documentElement).appendChild(s);
+        }
+
+        // Remove old execution, force a DOM reflow, and re-apply class cleanly
+        el.classList.remove("filler-blink-effect");
+        void el.offsetWidth;
+        el.classList.add("filler-blink-effect");
+
+        setTimeout(() => {
+            el.classList.remove("filler-blink-effect");
+        }, 2500);
+    }
+
     function impostaValore(el, valore) {
         if (!el || el.value) return;
         if (el.tagName === "SELECT") {
@@ -351,6 +385,9 @@
         }
         el.dispatchEvent(new Event("input", { bubbles: true }));
         el.dispatchEvent(new Event("change", { bubbles: true }));
+
+        // Trigger the visual correction handler
+        attivaBlink(el);
     }
 
     document.addEventListener("dblclick", function (e) {
@@ -418,7 +455,7 @@
 
                 const p = profiliAssegnati[groupKey];
 
-                // --- ALBERO DI LOGICHE CON PRIORITÀ AGGIORNATA (v1.9.1) ---
+                // --- ALBERO DI LOGICHE CON PRIORITÀ ---
 
                 // 1. CAP
                 if (
@@ -451,7 +488,7 @@
                 ) {
                     impostaValore(el, p.indirizzo);
                 }
-                // 4. Partita IVA (Vince nei campi ibridi + Whitelist esplicita per le varianti VAT)
+                // 4. Partita IVA
                 else if (
                     desc.includes("piva") ||
                     desc.includes("partitaiva") ||
