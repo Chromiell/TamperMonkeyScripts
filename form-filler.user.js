@@ -622,7 +622,94 @@
                 ) {
                     impostaValore(el, p.piva);
                 }
-                // 5. Ragione Sociale / Company Name (Added Detection)
+                // 5. Codice Fiscale
+                else if (
+                    parentText.includes("codice fiscale") ||
+                    parentText.includes("codice_fiscale") ||
+                    desc.includes("codicefiscale") ||
+                    desc.includes("codice_fiscale") ||
+                    nameStr === "cf" ||
+                    idStr === "cf" ||
+                    el.maxLength === 16
+                ) {
+                    impostaValore(el, p.cf);
+                }
+                // 6. Telefono / Cellulare
+                else if (
+                    type === "tel" ||
+                    desc.includes("tel") ||
+                    desc.includes("cell") ||
+                    desc.includes("phone") ||
+                    desc.includes("mob") ||
+                    parentText.includes("tel") ||
+                    parentText.includes("telefono")
+                ) {
+                    impostaValore(el, p.cellulare);
+                }
+                // 7. Cognome
+                else if (
+                    desc.includes("cognome") ||
+                    desc.includes("surname") ||
+                    desc.includes("last") ||
+                    parentText.includes("cognome")
+                ) {
+                    impostaValore(el, p.cognome);
+                }
+                // 8. Nome
+                else if (
+                    (desc.includes("nome") ||
+                        desc.includes("name") ||
+                        desc.includes("first") ||
+                        parentText.includes("nome")) &&
+                    !desc.includes("cognome") &&
+                    !parentText.includes("cognome") &&
+                    !desc.includes("user")
+                ) {
+                    impostaValore(el, p.nome);
+                }
+                // 9. Email
+                else if (
+                    type === "email" ||
+                    desc.includes("email") ||
+                    desc.includes("mail") ||
+                    parentText.includes("email") ||
+                    parentText.includes("e-mail")
+                ) {
+                    impostaValore(el, p.email);
+                }
+                // 10. Data di Nascita
+                else if (
+                    desc.includes("nascita") ||
+                    desc.includes("birth") ||
+                    type === "date" ||
+                    parentText.includes("data")
+                ) {
+                    impostaValore(
+                        el,
+                        type === "date" ? p.dataInputDate : p.dataStandard,
+                    );
+                }
+                // 11. Sesso / Genere
+                else if (
+                    desc.includes("sesso") ||
+                    desc.includes("genere") ||
+                    desc.includes("gender") ||
+                    parentText.includes("genere")
+                ) {
+                    impostaValore(el, p.sesso);
+                }
+                // 12. Città / Comune
+                else if (
+                    desc.includes("comune") ||
+                    desc.includes("citta") ||
+                    desc.includes("city") ||
+                    desc.includes("birthplace") ||
+                    parentText.includes("comune") ||
+                    parentText.includes("città")
+                ) {
+                    impostaValore(el, p.comuneNome);
+                }
+                // 13. Ragione Sociale / Company Name
                 else if (
                     desc.includes("ragione") ||
                     desc.includes("sociale") ||
@@ -647,93 +734,6 @@
                     parentText.includes("organisation")
                 ) {
                     impostaValore(el, p.ragioneSociale);
-                }
-                // 6. Codice Fiscale
-                else if (
-                    parentText.includes("codice fiscale") ||
-                    parentText.includes("codice_fiscale") ||
-                    desc.includes("codicefiscale") ||
-                    desc.includes("codice_fiscale") ||
-                    nameStr === "cf" ||
-                    idStr === "cf" ||
-                    el.maxLength === 16
-                ) {
-                    impostaValore(el, p.cf);
-                }
-                // 7. Telefono / Cellulare
-                else if (
-                    type === "tel" ||
-                    desc.includes("tel") ||
-                    desc.includes("cell") ||
-                    desc.includes("phone") ||
-                    desc.includes("mob") ||
-                    parentText.includes("tel") ||
-                    parentText.includes("telefono")
-                ) {
-                    impostaValore(el, p.cellulare);
-                }
-                // 8. Cognome
-                else if (
-                    desc.includes("cognome") ||
-                    desc.includes("surname") ||
-                    desc.includes("last") ||
-                    parentText.includes("cognome")
-                ) {
-                    impostaValore(el, p.cognome);
-                }
-                // 9. Nome
-                else if (
-                    (desc.includes("nome") ||
-                        desc.includes("name") ||
-                        desc.includes("first") ||
-                        parentText.includes("nome")) &&
-                    !desc.includes("cognome") &&
-                    !parentText.includes("cognome") &&
-                    !desc.includes("user")
-                ) {
-                    impostaValore(el, p.nome);
-                }
-                // 10. Email
-                else if (
-                    type === "email" ||
-                    desc.includes("email") ||
-                    desc.includes("mail") ||
-                    parentText.includes("email") ||
-                    parentText.includes("e-mail")
-                ) {
-                    impostaValore(el, p.email);
-                }
-                // 11. Data di Nascita
-                else if (
-                    desc.includes("nascita") ||
-                    desc.includes("birth") ||
-                    type === "date" ||
-                    parentText.includes("data")
-                ) {
-                    impostaValore(
-                        el,
-                        type === "date" ? p.dataInputDate : p.dataStandard,
-                    );
-                }
-                // 12. Sesso / Genere
-                else if (
-                    desc.includes("sesso") ||
-                    desc.includes("genere") ||
-                    desc.includes("gender") ||
-                    parentText.includes("genere")
-                ) {
-                    impostaValore(el, p.sesso);
-                }
-                // 13. Città / Comune
-                else if (
-                    desc.includes("comune") ||
-                    desc.includes("citta") ||
-                    desc.includes("city") ||
-                    desc.includes("birthplace") ||
-                    parentText.includes("comune") ||
-                    parentText.includes("città")
-                ) {
-                    impostaValore(el, p.comuneNome);
                 }
             });
         }
