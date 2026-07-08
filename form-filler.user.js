@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Form Filler Multi-Form
 // @namespace    http://tampermonkey.net/
-// @version      1.9.3
-// @description  Riconoscimento P.IVA tramite whitelist esplicita di parole chiave (openapivat, companyvat, vatnumber, ecc.) con e senza separatori.
+// @version      1.9.4
+// @description  Riconoscimento P.IVA e Ragione Sociale tramite whitelist esplicita di parole chiave (openapivat, company, ragione sociale, ecc.).
 // @author       Chromiell
 // @match        *://*/*
 // @grant        none
@@ -107,6 +107,114 @@
         { lett: "R", num: "10" },
         { lett: "S", num: "11" },
         { lett: "T", num: "12" },
+    ];
+
+    // 50 Corporate Names / Nouns
+    const nomiAzienda = [
+        "Gruppo",
+        "Tecnologie",
+        "Soluzioni",
+        "Sistemi",
+        "Servizi",
+        "Consulenze",
+        "Costruzioni",
+        "Industrie",
+        "Sviluppo",
+        "Progetti",
+        "Logistica",
+        "Trasporti",
+        "Automazioni",
+        "Comunicazioni",
+        "Reti",
+        "Produzioni",
+        "Finanza",
+        "Gestioni",
+        "Investimenti",
+        "Ricerche",
+        "Forniture",
+        "Distribuzione",
+        "Commercio",
+        "Manifatture",
+        "Energie",
+        "Risorse",
+        "Strutture",
+        "Componenti",
+        "Impianti",
+        "Strumenti",
+        "Dispositivi",
+        "Applicazioni",
+        "Piattaforme",
+        "Laboratori",
+        "Officine",
+        "Fabbriche",
+        "Store",
+        "Hub",
+        "Lab",
+        "Agency",
+        "Venture",
+        "Enterprise",
+        "Partners",
+        "Associates",
+        "Factory",
+        "Network",
+        "Alliance",
+        "Consortium",
+        "Foundation",
+        "Holding",
+    ];
+
+    // 50 Corporate Adjectives
+    const aggettiviAzienda = [
+        "Globale",
+        "Digitale",
+        "Integrato",
+        "Innovativo",
+        "Avanzato",
+        "Sostenibile",
+        "Ecologico",
+        "Industriale",
+        "Meccanico",
+        "Elettronico",
+        "Chimico",
+        "Alimentare",
+        "Medico",
+        "Farmaceutico",
+        "Tecnologico",
+        "Informatico",
+        "Creativo",
+        "Strategico",
+        "Finanziario",
+        "Immobiliare",
+        "Commerciale",
+        "Logistico",
+        "Operativo",
+        "Internazionale",
+        "Nazionale",
+        "Regionale",
+        "Locale",
+        "Europeo",
+        "Moderno",
+        "Futuro",
+        "Centrale",
+        "Primario",
+        "Attivo",
+        "Dinamico",
+        "Solido",
+        "Sicuro",
+        "Rapido",
+        "Efficiente",
+        "Flessibile",
+        "Aperto",
+        "Libero",
+        "Unico",
+        "Condiviso",
+        "Connesso",
+        "Intelligente",
+        "Collettivo",
+        "Cooperativo",
+        "Associato",
+        "Unito",
+        "Generale",
     ];
 
     const dispari = {
@@ -274,6 +382,18 @@
         return prefisso + corpo;
     }
 
+    function generaRagioneSociale() {
+        const nome =
+            nomiAzienda[Math.floor(Math.random() * nomiAzienda.length)];
+        const agg =
+            aggettiviAzienda[
+                Math.floor(Math.random() * aggettiviAzienda.length)
+            ];
+        const legali = ["S.r.l.", "S.p.A.", "S.n.c.", "S.a.s."];
+        const estensione = legali[Math.floor(Math.random() * legali.length)];
+        return `${nome} ${agg} ${estensione}`;
+    }
+
     function generaProfiloCasuale() {
         const sesso = Math.random() > 0.5 ? "M" : "F";
         const nome =
@@ -309,6 +429,7 @@
             sesso,
             cf: cfBase,
             piva: generaPIVAValida(),
+            ragioneSociale: generaRagioneSociale(),
             cellulare: generaCellulareItaliano(),
             email: `${nome.toLowerCase()}.${cognome.toLowerCase()}${randId}@example.com`,
             dataStandard: `${giornoVal.toString().padStart(2, "0")}/${meseObj.num}/19${annoNum}`,
@@ -359,7 +480,6 @@
             (document.head || document.documentElement).appendChild(s);
         }
 
-        // Remove old execution, force a DOM reflow, and re-apply class cleanly
         el.classList.remove("filler-blink-effect");
         void el.offsetWidth;
         el.classList.add("filler-blink-effect");
@@ -386,7 +506,6 @@
         el.dispatchEvent(new Event("input", { bubbles: true }));
         el.dispatchEvent(new Event("change", { bubbles: true }));
 
-        // Trigger the visual correction handler
         attivaBlink(el);
     }
 
@@ -503,7 +622,33 @@
                 ) {
                     impostaValore(el, p.piva);
                 }
-                // 5. Codice Fiscale
+                // 5. Ragione Sociale / Company Name (Added Detection)
+                else if (
+                    desc.includes("ragione") ||
+                    desc.includes("sociale") ||
+                    desc.includes("azienda") ||
+                    desc.includes("societa") ||
+                    desc.includes("società") ||
+                    desc.includes("ditta") ||
+                    desc.includes("company") ||
+                    desc.includes("business") ||
+                    desc.includes("legal") ||
+                    desc.includes("firm") ||
+                    desc.includes("org") ||
+                    parentText.includes("ragione sociale") ||
+                    parentText.includes("ragionesociale") ||
+                    parentText.includes("azienda") ||
+                    parentText.includes("società") ||
+                    parentText.includes("societa") ||
+                    parentText.includes("ditta") ||
+                    parentText.includes("company") ||
+                    parentText.includes("business name") ||
+                    parentText.includes("organization") ||
+                    parentText.includes("organisation")
+                ) {
+                    impostaValore(el, p.ragioneSociale);
+                }
+                // 6. Codice Fiscale
                 else if (
                     parentText.includes("codice fiscale") ||
                     parentText.includes("codice_fiscale") ||
@@ -515,7 +660,7 @@
                 ) {
                     impostaValore(el, p.cf);
                 }
-                // 6. Telefono / Cellulare
+                // 7. Telefono / Cellulare
                 else if (
                     type === "tel" ||
                     desc.includes("tel") ||
@@ -527,7 +672,7 @@
                 ) {
                     impostaValore(el, p.cellulare);
                 }
-                // 7. Cognome
+                // 8. Cognome
                 else if (
                     desc.includes("cognome") ||
                     desc.includes("surname") ||
@@ -536,7 +681,7 @@
                 ) {
                     impostaValore(el, p.cognome);
                 }
-                // 8. Nome
+                // 9. Nome
                 else if (
                     (desc.includes("nome") ||
                         desc.includes("name") ||
@@ -548,7 +693,7 @@
                 ) {
                     impostaValore(el, p.nome);
                 }
-                // 9. Email
+                // 10. Email
                 else if (
                     type === "email" ||
                     desc.includes("email") ||
@@ -558,7 +703,7 @@
                 ) {
                     impostaValore(el, p.email);
                 }
-                // 10. Data di Nascita
+                // 11. Data di Nascita
                 else if (
                     desc.includes("nascita") ||
                     desc.includes("birth") ||
@@ -570,7 +715,7 @@
                         type === "date" ? p.dataInputDate : p.dataStandard,
                     );
                 }
-                // 11. Sesso / Genere
+                // 12. Sesso / Genere
                 else if (
                     desc.includes("sesso") ||
                     desc.includes("genere") ||
@@ -579,7 +724,7 @@
                 ) {
                     impostaValore(el, p.sesso);
                 }
-                // 12. Città / Comune
+                // 13. Città / Comune
                 else if (
                     desc.includes("comune") ||
                     desc.includes("citta") ||
