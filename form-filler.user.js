@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Form Filler Multi-Form
 // @namespace    http://tampermonkey.net/
-// @version      1.9.4
-// @description  Riconoscimento P.IVA e Ragione Sociale tramite whitelist esplicita di parole chiave (openapivat, company, ragione sociale, ecc.).
+// @version      1.9.5
+// @description  Riconoscimento Form Fields tramite keywords
 // @author       Chromiell
 // @match        *://*/*
 // @grant        none
@@ -109,7 +109,6 @@
         { lett: "T", num: "12" },
     ];
 
-    // 50 Corporate Names / Nouns
     const nomiAzienda = [
         "Gruppo",
         "Tecnologie",
@@ -163,7 +162,6 @@
         "Holding",
     ];
 
-    // 50 Corporate Adjectives
     const aggettiviAzienda = [
         "Globale",
         "Digitale",
@@ -215,6 +213,30 @@
         "Associato",
         "Unito",
         "Generale",
+    ];
+
+    // Pool di professioni in italiano e inglese per la compilazione casuale
+    const professioni = [
+        "Ingegnere",
+        "Sviluppatore Software",
+        "Medico",
+        "Insegnante",
+        "Avvocato",
+        "Commercialista",
+        "Impiegato",
+        "Architetto",
+        "Designer",
+        "Manager",
+        "Consultant",
+        "Software Engineer",
+        "Teacher",
+        "Doctor",
+        "Accountant",
+        "Impiegato Tecnico",
+        "Project Manager",
+        "Analista",
+        "Consulente",
+        "Specialista Marketing",
     ];
 
     const dispari = {
@@ -438,6 +460,8 @@
             provincia: comune.prov,
             cap: comune.cap,
             indirizzo: `${viaScelta} ${civico}`,
+            professione:
+                professioni[Math.floor(Math.random() * professioni.length)],
         };
     }
 
@@ -734,6 +758,26 @@
                     parentText.includes("organisation")
                 ) {
                     impostaValore(el, p.ragioneSociale);
+                }
+                // 14. Professione / Job / Occupation (Nuova sezione aggiunta)
+                else if (
+                    desc.includes("professione") ||
+                    desc.includes("profession") ||
+                    desc.includes("lavoro") ||
+                    desc.includes("occupazione") ||
+                    desc.includes("occupation") ||
+                    desc.includes("job") ||
+                    desc.includes("ruolo") ||
+                    desc.includes("role") ||
+                    parentText.includes("professione") ||
+                    parentText.includes("profession") ||
+                    parentText.includes("lavoro") ||
+                    parentText.includes("occupazione") ||
+                    parentText.includes("job") ||
+                    parentText.includes("ruolo") ||
+                    parentText.includes("role")
+                ) {
+                    impostaValore(el, p.professione);
                 }
             });
         }
